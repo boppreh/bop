@@ -6,23 +6,30 @@ import flask
 from urllib.parse import quote
 from uuid import uuid4
 
-class Page(object):
-    def __init__(self, publisher, data=None):
+class Channel(object):
+    def __init__(self, publisher, channel):
         self.publisher = publisher
-        self.data = data or {}
+        self.channel = channel
 
     def __setitem__(self, element_id, value):
-        self.data[element_id] = value
         event = '{} {}'.format(element_id, quote(value))
-        self.publisher.publish(event)
+        self.publisher.publish(event, self.channel)
 
-    def __getitem__(self, element_id):
-        return self.data[element_id]
+class Context(object):
+    def __init__(self, publisher, user, pageid):
+        self.publisher = publisher
+        self.user = user
+        self.pageid = pageid
+
+        self.global_ = Channel(publisher, 'global')
+        self.user = Channel(publisher, user.id)
+        self.page = Channel(publisher, pageid)
 
 
 def start(html, user_cls):
     app = flask.Flask(__name__)
 
+    publisher = Publisher()
     user_by_id = {}
 
     def get_user():
@@ -32,7 +39,6 @@ def start(html, user_cls):
             return user_by_id[userid]
         except KeyError:
             user = user_cls()
-            user.publisher = Publisher()
             user.id = userid
             user_by_id[userid] = user
             return user
@@ -47,18 +53,23 @@ def start(html, user_cls):
     def root():
         return html
 
-    @app.route('/sse/subscribe')
-    def subscribe():
+    @app.route('/sse/subscribe/<pageid>')
+    def subscribe(pageid):
         user = get_user()
-        response = flask.Response(user.publisher.subscribe(),
+        subscription = publisher.subscribe(['global', user.id, pageid])
+        response = flask.Response(subscription,
                                   content_type='text/event-stream')
         if flask.request.cookies.get('userid') is None:
             response.set_cookie('userid', user.id)
         return response
 
-    @app.route('/<method>', methods=['POST'])
-    def action(method):
+    @app.route('/<method_name>', methods=['POST'])
+    def action(method_name):
         user = get_user()
-        return getattr(user, method)(Page(user.publisher)) or ''
+        params = [value for key, value in flask.request.form.items()
+                  if key != 'pageid']
+        context = Context(publisher, user, flask.request.form['pageid'])
+        method = getattr(user, method_name)
+        return method(context, *params) or ''
 
     app.run(debug=True, threaded=True)
