@@ -66,7 +66,7 @@ def start(html, user_cls):
     @app.route('/<method_name>', methods=['POST'])
     def action(method_name):
         user = get_user()
-        params = [value for key, value in flask.request.form.items()
+        params = [value for key, value in sorted(flask.request.form.items())
                   if key != 'pageid']
         context = Context(publisher, user, flask.request.form['pageid'])
         method = getattr(user, method_name)
