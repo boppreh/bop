@@ -12,9 +12,10 @@ var pageid = String(Math.random()).slice(2);
 function call(method) {
     var data = new FormData();
     data.append('pageid', pageid);
+    var i = 1;
     Array.prototype.slice.call(arguments, 1).forEach(function (elementId) {
         var value = document.getElementById(elementId).value;
-        data.append(elementId, value);
+        data.append(i++, value);
     });
 
     var r = new XMLHttpRequest();
