@@ -3,7 +3,6 @@
 function startListening(path) {
     new EventSource(path).onmessage = function(e) {
         var p = e.data.split(' ');
-        console.log(p);
         document.getElementById(p[0]).innerHTML = decodeURIComponent(p[1]);
     }
 }
