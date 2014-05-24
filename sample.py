@@ -1,0 +1,3 @@
+import bop
+
+bop.start()
