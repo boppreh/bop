@@ -2,38 +2,34 @@ import time
 import bop
 
 class User(object):
-    def send_page(self, context, number):
-        context.page['log'] = number
+    def add(self, page, a, b):
+        a, b = int(a), int(b)
 
-    def send_user(self, context, number):
-        context.user['log'] = number
-
-    def send_global(self, context, number):
-        context.global_['log'] = number
-
-    def long_action(self, context):
-        for i in range(30):
-            context.page['progress'] = '{}/{}'.format(i, 30)
-            time.sleep(0.1)
-        context.page['progress'] = 'Done!'
+        page['result'] = "Hmmm..."
+        time.sleep(1)
+        page['result'] = "{} plus {}...".format(a, b)
+        time.sleep(2)
+        page['result'] = "{}?".format(a + b + 1)
+        time.sleep(2)
+        page['result'] = "No no, wait."
+        time.sleep(2)
+        page['result'] = "It's {}!".format(a + b)
+        time.sleep(2)
+        page['result'] = "{} + {} = {}".format(a, b, a + b)
 
 html = """
 <html>
     <body>
-        <input id="number" type="text" placeholder="Enter a number"</input>
-
-        <button onclick="call('send_page', 'number')">Update page</button>
-        <button onclick="call('send_user', 'number')">Update user</button>
-        <button onclick="call('send_global', 'number')">Update global</button>
-
-        <h1><span id="log">Nothing</span></h1>
-
-        <button onclick="call('long_action');console.log(this);">Start long action</button>
-        <h1><span id="progress"></span></h1>
-
         <script src="/sse.js"></script>
+
+        <input id="a" type="text" placeholder="Number A"</input>
+        <input id="b" type="text" placeholder="Number B"</input>
+
+        <button onclick="call('add', 'a', 'b')">Add them!</button>
+
+        <h2><span id="result">A + B = ?</span></h2>
     </body>
 </html>
 """
 
-bop.start(html, User)
+bop.App(html, User)
