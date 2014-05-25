@@ -26,7 +26,7 @@ class App(object):
         self.publisher = Publisher()
         self.user_by_id = {}
         self.page_by_id = {}
-        self.world = Channel(self.publisher, 'all')
+        self.world = Channel(self.publisher, 'world')
 
         @self.flask.route('/sse.js')
         def server_sse():
@@ -81,7 +81,7 @@ class App(object):
     def _subscribe(self, pageid):
         user = self.get_user()
         page = self._get_page(pageid)
-        return self.publisher.subscribe(['global', user.id, page.id])
+        return self.publisher.subscribe(['world', user.id, page.id])
 
     def call(self, method_name, page, params):
         user = self.get_user()
