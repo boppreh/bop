@@ -2,32 +2,32 @@ import time
 import bop
 
 class User(object):
-    def add(self, page, a, b):
-        a, b = int(a), int(b)
+    def __init__(self):
+        self.name = 'Anon'
 
-        page['result'] = "Hmmm..."
-        time.sleep(1)
-        page['result'] = "{} plus {}...".format(a, b)
-        time.sleep(2)
-        page['result'] = "{}?".format(a + b + 1)
-        time.sleep(2)
-        page['result'] = "No no, wait."
-        time.sleep(2)
-        page['result'] = "It's {}!".format(a + b)
-        time.sleep(2)
-        page['result'] = "{} + {} = {}".format(a, b, a + b)
+    def change_name(self, page, new_name):
+        self.name = new_name or 'Anon'
+        page.user['name'] = new_name
+
+    def say(self, page, message):
+        page['message'] = ''
+        page.world['chat'] += '<strong>{}</strong>: {}<br>'.format(self.name,
+                                                                   message)
 
 html = """
 <html>
     <body>
         <script src="/sse.js"></script>
 
-        <input id="a" type="text" placeholder="Number A"</input>
-        <input id="b" type="text" placeholder="Number B"</input>
+        <input type="text" id="name" placeholder="Anon">
+        <button onclick="call('change_name', 'name')">Change name</button>
 
-        <button onclick="call('add', 'a', 'b')">Add them!</button>
+        <div id="chat"></div>
 
-        <h2><span id="result">A + B = ?</span></h2>
+        <form onsubmit="call('say', 'message');" action="javascript:void(0);">
+            <input type="text" id="message">
+            <input type="submit" value="Send">
+        </form>
     </body>
 </html>
 """
