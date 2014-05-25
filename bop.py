@@ -26,7 +26,7 @@ class App(object):
         self.publisher = Publisher()
         self.user_by_id = {}
         self.page_by_id = {}
-        self.all = Channel(self.publisher, 'all')
+        self.world = Channel(self.publisher, 'all')
 
         @self.flask.route('/sse.js')
         def server_sse():
@@ -74,6 +74,7 @@ class App(object):
             page = Channel(self.publisher, pageid)
             page.id = pageid
             page.user = self.get_user()
+            page.world = self.world
             self.page_by_id[pageid] = page
             return page
 
