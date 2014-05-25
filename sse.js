@@ -1,26 +1,20 @@
 "ues strict";
 
-function startListening(path) {
-    new EventSource(path).onmessage = function(e) {
-        var p = e.data.split(' ');
-        document.getElementById(p[0]).innerHTML = decodeURIComponent(p[1]);
-    }
-}
-
 var pageid = String(Math.random()).slice(2);
 
-function call(method) {
+new EventSource('/sse/subscribe/' + pageid).onmessage = function(e) {
+    eval(e.data);
+}
+
+function call(method /*, elements*/) {
     var data = new FormData();
     data.append('pageid', pageid);
     var i = 1;
     Array.prototype.slice.call(arguments, 1).forEach(function (elementId) {
-        var value = document.getElementById(elementId).value;
-        data.append(i++, value);
+        data.append(i++, document.getElementById(elementId).value);
     });
 
     var r = new XMLHttpRequest();
     r.open('POST', '/' + method, true);
     r.send(data);
 }
-
-startListening('/sse/subscribe/' + pageid);

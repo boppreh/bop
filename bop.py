@@ -7,14 +7,18 @@ from urllib.parse import quote
 from uuid import uuid4
 
 class Channel(object):
+    js = 'document.getElementById("{}").innerHTML = decodeURIComponent("{}")'
+
     def __init__(self, publisher, channel):
         self.publisher = publisher
         self.channel = channel
         self.data = {}
 
     def __setitem__(self, element_id, value):
-        event = '{} {}'.format(element_id, quote(value))
-        self.publisher.publish(event, self.channel)
+        self.eval(Channel.js.format(element_id, quote(value)))
+
+    def eval(self, script):
+        self.publisher.publish(script, self.channel)
 
 class App(object):
     def __init__(self, html, user_cls, port=5000):
