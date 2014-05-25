@@ -6,16 +6,43 @@ import flask
 from urllib.parse import quote
 from uuid import uuid4
 
+class _Dummy(object):
+    def __init__(self, element_id):
+        self.element_id = element_id
+        self.prepend = []
+        self.append = []
+
+    def __add__(self, other):
+        self.append.append(other)
+        return self
+
+    def __radd__(self, other):
+        self.prepend.append(other)
+        return self
+
+
 class Channel(object):
-    js = 'document.getElementById("{}").innerHTML = decodeURIComponent("{}")'
+    js_set = 'set("{}", decodeURIComponent("{}"))'
+    js_surround = 'set("{}", decodeURIComponent("{}") + get("{}") + decodeURIComponent("{}"))'
 
     def __init__(self, publisher, channel):
         self.publisher = publisher
         self.channel = channel
         self.data = {}
 
+    def __getitem__(self, element_id):
+        return _Dummy(element_id)
+
     def __setitem__(self, element_id, value):
-        self.eval(Channel.js.format(element_id, quote(value)))
+        if isinstance(value, _Dummy):
+            prepend = ''.join(reversed(value.prepend))
+            append = ''.join(value.append)
+            self.eval(Channel.js_surround.format(element_id,
+                                                 quote(prepend),
+                                                 value.element_id,
+                                                 quote(append)))
+        else:
+            self.eval(Channel.js_set.format(element_id, quote(value)))
 
     def eval(self, script):
         self.publisher.publish(script, self.channel)
@@ -77,7 +104,7 @@ class App(object):
         except KeyError:
             page = Channel(self.publisher, pageid)
             page.id = pageid
-            page.user = self.get_user()
+            page.user = Channel(self.publisher, self.get_user().id)
             page.world = self.world
             self.page_by_id[pageid] = page
             return page
