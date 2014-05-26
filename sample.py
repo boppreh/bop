@@ -1,19 +1,6 @@
 import time
 import bop
 
-class User(object):
-    def __init__(self):
-        self.name = 'Anon'
-
-    def change_name(self, page, new_name):
-        self.name = new_name or 'Anon'
-        page.user['name'] = new_name
-
-    def say(self, page, message):
-        page['message'] = ''
-        page.world['chat'] += '<strong>{}</strong>: {}<br>'.format(self.name,
-                                                                   message)
-
 html = """
 <html>
     <body>
@@ -32,4 +19,34 @@ html = """
 </html>
 """
 
-bop.App(html, User)
+class Page(object):
+    def __init__(self, context):
+        self.ctx = context
+        try:
+            self.ctx.page['name'] = self.ctx.user.name
+        except AttributeError:
+            pass
+
+    def __str__(self):
+        return html
+
+    def get_name(self):
+        try:
+            return self.ctx.user.name
+        except AttributeError:
+            return 'Anon'
+
+    def change_name(self, new_name):
+        if not new_name:
+            return
+
+        self.ctx.user.name = new_name
+        self.ctx.user['name'] = new_name
+
+    def say(self, message):
+        self.ctx.page['message'] = ''
+        line = '<strong>{}</strong>: {}<br>'.format(self.get_name(), message)
+        self.ctx.world['chat'] += line
+                                                             
+
+bop.App(Page)

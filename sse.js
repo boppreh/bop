@@ -1,6 +1,28 @@
 "ues strict";
 
-var pageid = String(Math.random()).slice(2);
+// http://stackoverflow.com/questions/5639346/
+(function(){
+    var cookies;
+
+    function readCookie(name,c,C,i){
+        if(cookies){ return cookies[name]; }
+
+        c = document.cookie.split('; ');
+        cookies = {};
+
+        for(i=c.length-1; i>=0; i--){
+           C = c[i].split('=');
+           cookies[C[0]] = C[1];
+        }
+
+        return cookies[name];
+    }
+
+    window.readCookie = readCookie;
+})();
+
+
+var pageid = window.readCookie('pageid') || String(Math.random()).slice(2);
 
 new EventSource('/sse/subscribe/' + pageid).onmessage = function(e) {
     console.log(e.data);
@@ -16,7 +38,7 @@ function call(method /*, elements*/) {
     });
 
     var r = new XMLHttpRequest();
-    r.open('POST', '/' + method, true);
+    r.open('POST', '/call/' + method, true);
     r.send(data);
 }
 

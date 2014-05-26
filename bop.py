@@ -21,7 +21,7 @@ class _Dummy(object):
         return self
 
 
-class Channel(object):
+class _Channel(object):
     js_set = 'set("{}", decodeURIComponent("{}"))'
     js_surround = 'set("{}", decodeURIComponent("{}") + get("{}") + decodeURIComponent("{}"))'
 
@@ -37,84 +37,103 @@ class Channel(object):
         if isinstance(value, _Dummy):
             prepend = ''.join(reversed(value.prepend))
             append = ''.join(value.append)
-            self.eval(Channel.js_surround.format(element_id,
+            self.eval(_Channel.js_surround.format(element_id,
                                                  quote(prepend),
                                                  value.element_id,
                                                  quote(append)))
         else:
-            self.eval(Channel.js_set.format(element_id, quote(value)))
+            self.eval(_Channel.js_set.format(element_id, quote(value)))
 
     def eval(self, script):
         self.publisher.publish(script, self.channel)
 
+class _Context(object):
+    def __init__(self, page_channel, user_channel, world_channel, subscription):
+        self.page = page_channel
+        self.user = user_channel
+        self.world = world_channel
+        self.subscription = subscription
+
+
 class App(object):
-    def __init__(self, html, user_cls, port=5000):
+    def __init__(self, page_cls, port=5000):
         self.flask = flask.Flask(__name__)
 
-        self.html = html
-        self.user_cls = user_cls
+        self.page_cls = page_cls
 
         self.publisher = Publisher()
+        self.context_by_pageid = {}
         self.user_by_id = {}
         self.page_by_id = {}
-        self.world = Channel(self.publisher, 'world')
+        self.world = _Channel(self.publisher, 'world')
 
         @self.flask.route('/sse.js')
         def server_sse():
             return flask.Response(open('sse.js').read(),
                                   content_type='application/javascript')
 
-        @self.flask.route('/')
-        def root():
-            return self.html
-
         @self.flask.route('/sse/subscribe/<pageid>')
         def subscribe(pageid):
-            response = flask.Response(self._subscribe(pageid),
+            context = self.context_by_pageid[pageid]
+            response = flask.Response(context.subscription,
                                       content_type='text/event-stream')
-            if flask.request.cookies.get('userid') is None:
-                response.set_cookie('userid', self.get_user().id)
             return response
 
-        @self.flask.route('/<method_name>', methods=['POST'])
+        @self.flask.route('/call/<method_name>', methods=['POST'])
         def action(method_name):
-            user = self.get_user()
             pageid = flask.request.form['pageid']
+            page = self.page_by_id[pageid]
+
             params = [value
                       for key, value in sorted(flask.request.form.items())
                       if key != 'pageid']
-            return self.call(method_name, self._get_page(pageid), params) or ''
+
+            method = getattr(page, method_name)
+            return method(*params) or ''
+
+        @self.flask.route('/')
+        @self.flask.route('/<resource>')
+        def root(resource='/'):
+            pageid = str(uuid4())
+            page = self._get_page(pageid)
+
+            response = flask.make_response(str(page))
+            response.set_cookie('pageid', pageid)
+            if flask.request.cookies.get('userid') is None:
+                response.set_cookie('userid', self._get_user_channel().id)
+
+            return response
 
         self.flask.run(debug=True, threaded=True, port=port)
 
-    def get_user(self):
+    def _get_user_channel(self):
         userid = flask.request.cookies.get('userid') or str(uuid4())
 
         try:
             return self.user_by_id[userid]
         except KeyError:
-            user = self.user_cls()
+            user = _Channel(self.publisher, userid)
             user.id = userid
             self.user_by_id[userid] = user
             return user
 
     def _get_page(self, pageid):
         try:
-            return self.page_by_id[pageid]
+            return self.context_by_pageid[pageid]
         except KeyError:
-            page = Channel(self.publisher, pageid)
-            page.id = pageid
-            page.user = Channel(self.publisher, self.get_user().id)
-            page.world = self.world
+            page_channel = _Channel(self.publisher, pageid)
+            user_channel = self._get_user_channel()
+            world_channel = self.world
+
+
+            channel_names = ['world', user_channel.id, pageid]
+            subscription = self.publisher.subscribe(channel_names)
+
+            context = _Context(page_channel, user_channel, world_channel,
+                               subscription)
+
+            page = self.page_cls(context)
+
+            self.context_by_pageid[pageid] = context
             self.page_by_id[pageid] = page
             return page
-
-    def _subscribe(self, pageid):
-        user = self.get_user()
-        page = self._get_page(pageid)
-        return self.publisher.subscribe(['world', user.id, page.id])
-
-    def call(self, method_name, page, params):
-        user = self.get_user()
-        method = getattr(user, method_name)
-        return method(page, *params)
