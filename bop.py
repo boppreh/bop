@@ -56,7 +56,7 @@ class _Context(object):
 
 
 class App(object):
-    def __init__(self, page_cls, port=5000):
+    def __init__(self, page_cls, port=80, public=True):
         self.flask = flask.Flask(__name__)
 
         self.page_cls = page_cls
@@ -104,7 +104,8 @@ class App(object):
 
             return response
 
-        self.flask.run(debug=True, threaded=True, port=port)
+        bind = '0.0.0.0' if public else '127.0.0.1'
+        self.flask.run(host=bind, threaded=True, port=port)
 
     def _get_user_channel(self):
         userid = flask.request.cookies.get('userid') or str(uuid4())
