@@ -56,7 +56,7 @@ class _Context(object):
 
 
 class App(object):
-    def __init__(self, page_cls, port=80, public=True):
+    def __init__(self, page_cls):
         self.flask = flask.Flask(__name__)
 
         self.page_cls = page_cls
@@ -104,8 +104,20 @@ class App(object):
 
             return response
 
-        bind = '0.0.0.0' if public else '127.0.0.1'
-        self.flask.run(host=bind, threaded=True, port=port)
+    def serve(self, public=False, debug=True, ssl_context=None):
+        if public:
+            bind = '0.0.0.0'
+            if ssl_context:
+                from flask_sslify import SSLify
+                port = 443
+                SSLify(self.flask, permanent=True)
+            else:
+                port = 80
+        else:
+            bind = '127.0.0.1'
+            port = 8080
+        self.flask.run(debug=debug, host=bind, threaded=True, port=port,
+                ssl_context=ssl_context)
 
     def _get_user_channel(self):
         userid = flask.request.cookies.get('userid') or str(uuid4())
